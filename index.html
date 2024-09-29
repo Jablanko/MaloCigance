@@ -1,0 +1,172 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Chat Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        .chat-container {
+            width: 500px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .messages {
+            height: 300px;
+            overflow-y: scroll;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #fafafa;
+        }
+        .messages p {
+            margin: 5px 0;
+        }
+        input[type="text"] {
+            width: calc(100% - 60px);
+            padding: 10px;
+            margin-right: 10px;
+        }
+        button {
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .admin-panel {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="messages" id="chatbox">
+        <p><strong>Cigo Migo:</strong> Pozdrav! Pitaj me bilo šta i ja ću ti dati odgovor.</p>
+    </div>
+    <input type="text" id="userInput" placeholder="Type your question here..." />
+    <button onclick="sendMessage()">Send</button>
+    <br><br>
+    <!-- Admin panel button will be displayed only if correct password is entered -->
+    <button onclick="showPasswordPrompt()">    </button>
+
+    <div class="admin-panel" id="adminPanel">
+        <h3>Admin Panel - Answer Questions</h3>
+        <div id="questions"></div>
+    </div>
+</div>
+
+<script>
+    const questions = JSON.parse(sessionStorage.getItem('questions')) || [];
+    const answers = JSON.parse(sessionStorage.getItem('answers')) || {};
+
+    // Admin password (can be customized)
+    const ADMIN_PASSWORD = "kurac123";
+
+    // Function to send a message (user's question)
+    function sendMessage() {
+        const userMessage = document.getElementById("userInput").value;
+        if (userMessage === "") return;
+
+        const chatbox = document.getElementById("chatbox");
+        const questionId = questions.length;
+        questions.push({ id: questionId, question: userMessage });
+
+        sessionStorage.setItem('questions', JSON.stringify(questions));
+
+        chatbox.innerHTML += `<p><strong>You:</strong> ${userMessage}</p>`;
+        document.getElementById("userInput").value = "";
+
+        chatbox.innerHTML += `<p><em>Waiting for a response...</em></p>`;
+        chatbox.scrollTop = chatbox.scrollHeight;
+
+        loadAdminPanel();
+    }
+
+    // Function to prompt admin login and reveal the admin panel
+    function showPasswordPrompt() {
+        const password = prompt("Please enter admin password:");
+        if (password === ADMIN_PASSWORD) {
+            toggleAdminPanel();
+        } else {
+            alert("Incorrect password!");
+        }
+    }
+
+    // Function to toggle the admin panel visibility
+    function toggleAdminPanel() {
+        const adminPanel = document.getElementById("adminPanel");
+        adminPanel.style.display = 'block';
+        loadAdminPanel();
+    }
+
+    // Function to load unanswered questions in the admin panel
+    function loadAdminPanel() {
+        const adminPanel = document.getElementById("questions");
+        adminPanel.innerHTML = '';
+
+        questions.forEach(q => {
+            if (!answers[q.id]) {
+                const questionEl = document.createElement('div');
+                questionEl.innerHTML = `
+                    <p><strong>Question:</strong> ${q.question}</p>
+                    <textarea id="answer-${q.id}" placeholder="Type your answer..."></textarea>
+                    <button onclick="submitAnswer(${q.id})">Submit Answer</button>
+                `;
+                adminPanel.appendChild(questionEl);
+            }
+        });
+    }
+
+    // Function to submit an answer (admin only)
+    function submitAnswer(questionId) {
+        const answer = document.getElementById(`answer-${questionId}`).value;
+        answers[questionId] = answer;
+
+        sessionStorage.setItem('answers', JSON.stringify(answers));
+
+        alert('Answer submitted!');
+        loadAdminPanel();
+
+        // Show the answer in the chatbox
+        const chatbox = document.getElementById("chatbox");
+        chatbox.innerHTML += `<p><strong>Cigan:</strong> ${answer}</p>`;
+        chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    // Load existing questions and answers into the chatbox
+    function loadChatbox() {
+        const chatbox = document.getElementById("chatbox");
+        questions.forEach(q => {
+            chatbox.innerHTML += `<p><strong>You:</strong> ${q.question}</p>`;
+            if (answers[q.id]) {
+                chatbox.innerHTML += `<p><strong>Cigan:</strong> ${answers[q.id]}</p>`;
+            } else {
+                chatbox.innerHTML += `<p><em>Waiting for a response...</em></p>`;
+            }
+        });
+        chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    // Load everything on page load
+    window.onload = () => {
+        loadChatbox();
+    }
+</script>
+
+</body>
+</html>
