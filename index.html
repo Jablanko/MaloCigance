@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-time Chat with Admin Panel</title>
+    <title>Your Chat Interface</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -49,12 +49,8 @@
         }
         .admin-panel {
             display: none;
-            margin-top: 20px;
         }
     </style>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database.js"></script>
 </head>
 <body>
 
@@ -64,67 +60,72 @@
     </div>
     <input type="text" id="userInput" placeholder="Type your question here..." />
     <button onclick="sendMessage()">Send</button>
+    <br><br>
+    <button onclick="showPasswordPrompt()">Show Admin Panel</button>
 
-    <button onclick="showPasswordPrompt()">Admin Login</button>
-    
     <div class="admin-panel" id="adminPanel">
         <h3>Admin Panel - Answer Questions</h3>
         <div id="questions"></div>
     </div>
 </div>
 
-<script>
-    // Firebase Configuration
+<script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-analytics.js";
+    import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+    // Your web app's Firebase configuration
     const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-        databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT_ID.appspot.com",
-        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-        appId: "YOUR_APP_ID"
+        apiKey: "AIzaSyBvJVyVej8jKyKCGsBsmF31K8rA-oh_uio",
+        authDomain: "cigo-migo.firebaseapp.com",
+        projectId: "cigo-migo",
+        storageBucket: "cigo-migo.appspot.com",
+        messagingSenderId: "29448155255",
+        appId: "1:29448155255:web:c773f7882969e9daaf1672",
+        measurementId: "G-6YPW0BBS64"
     };
 
     // Initialize Firebase
-    const app = firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const db = getFirestore(app);
+    const messagesRef = collection(db, "messages");
 
-    const chatbox = document.getElementById("chatbox");
-    const adminPanel = document.getElementById("adminPanel");
-    const questionsDiv = document.getElementById("questions");
+    // Load existing messages into the chatbox
+    function loadMessages() {
+        onSnapshot(messagesRef, (snapshot) => {
+            const chatbox = document.getElementById("chatbox");
+            chatbox.innerHTML = ""; // Clear existing messages
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                chatbox.innerHTML += `<p><strong>You:</strong> ${data.question}</p>`;
+                if (data.answer) {
+                    chatbox.innerHTML += `<p><strong>Cigan:</strong> ${data.answer}</p>`;
+                } else {
+                    chatbox.innerHTML += `<p><em>Waiting for a response...</em></p>`;
+                }
+            });
+            chatbox.scrollTop = chatbox.scrollHeight;
+        });
+    }
 
-    // Admin password (can be customized)
-    const ADMIN_PASSWORD = "kurac123";
-
-    // Function to send a message
-    function sendMessage() {
+    // Function to send a message (user's question)
+    async function sendMessage() {
         const userMessage = document.getElementById("userInput").value;
         if (userMessage === "") return;
 
-        const messageData = {
-            user: "You",
-            message: userMessage,
-            type: "user",
-            timestamp: new Date().toISOString()
-        };
+        await addDoc(messagesRef, {
+            question: userMessage,
+            answer: null,
+            timestamp: new Date()
+        });
 
-        // Save the message to Firebase Realtime Database
-        database.ref("messages").push(messageData);
         document.getElementById("userInput").value = "";
     }
 
-    // Function to listen for new messages from Firebase Realtime Database
-    database.ref("messages").on("child_added", function(snapshot) {
-        const data = snapshot.val();
-        chatbox.innerHTML += `<p><strong>${data.user}:</strong> ${data.message}</p>`;
-        chatbox.scrollTop = chatbox.scrollHeight;
-
-        if (data.type === "admin") {
-            // If it's an admin response, show the message differently
-            chatbox.innerHTML += `<p><strong>Admin:</strong> ${data.message}</p>`;
-            chatbox.scrollTop = chatbox.scrollHeight;
-        }
-    });
+    // Admin password (can be customized)
+    const ADMIN_PASSWORD = "kurac123";
 
     // Function to prompt admin login and reveal the admin panel
     function showPasswordPrompt() {
@@ -138,45 +139,54 @@
 
     // Function to toggle the admin panel visibility
     function toggleAdminPanel() {
-        adminPanel.style.display = adminPanel.style.display === 'block' ? 'none' : 'block';
+        const adminPanel = document.getElementById("adminPanel");
+        adminPanel.style.display = 'block';
         loadAdminPanel();
     }
 
     // Function to load unanswered questions in the admin panel
     function loadAdminPanel() {
-        questionsDiv.innerHTML = '';
+        const adminPanel = document.getElementById("questions");
+        adminPanel.innerHTML = '';
 
-        // Fetch all messages from Firebase
-        database.ref("messages").once("value", function(snapshot) {
-            snapshot.forEach(function(childSnapshot) {
-                const messageData = childSnapshot.val();
-                if (messageData.type === "user") {
+        // Get all messages and display unanswered questions
+        onSnapshot(messagesRef, (snapshot) => {
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                if (!data.answer) {
                     const questionEl = document.createElement('div');
                     questionEl.innerHTML = `
-                        <p><strong>Question:</strong> ${messageData.message}</p>
-                        <textarea id="answer-${childSnapshot.key}" placeholder="Type your answer..."></textarea>
-                        <button onclick="submitAnswer('${childSnapshot.key}')">Submit Answer</button>
+                        <p><strong>Question:</strong> ${data.question}</p>
+                        <textarea id="answer-${doc.id}" placeholder="Type your answer..."></textarea>
+                        <button onclick="submitAnswer('${doc.id}')">Submit Answer</button>
                     `;
-                    questionsDiv.appendChild(questionEl);
+                    adminPanel.appendChild(questionEl);
                 }
             });
         });
     }
 
     // Function to submit an answer (admin only)
-    function submitAnswer(questionId) {
-        const answer = document.getElementById(`answer-${questionId}`).value;
-        const answerData = {
-            user: "Admin",
-            message: answer,
-            type: "admin",
-            timestamp: new Date().toISOString()
-        };
+    async function submitAnswer(docId) {
+        const answer = document.getElementById(`answer-${docId}`).value;
+        await addDoc(messagesRef, {
+            question: null,
+            answer: answer,
+            timestamp: new Date()
+        });
 
-        // Save the admin answer to Firebase Realtime Database
-        database.ref("messages").push(answerData);
         alert('Answer submitted!');
-        loadAdminPanel(); // Reload the admin panel to reflect submitted answers
+        loadAdminPanel();
+
+        // Show the answer in the chatbox
+        const chatbox = document.getElementById("chatbox");
+        chatbox.innerHTML += `<p><strong>Cigan:</strong> ${answer}</p>`;
+        chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    // Load everything on page load
+    window.onload = () => {
+        loadMessages();
     }
 </script>
 
