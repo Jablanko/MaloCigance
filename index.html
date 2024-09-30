@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="hr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-time Chat</title>
+    <title>Real-time Chat with Admin Panel</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -47,6 +47,10 @@
         button:hover {
             background-color: #45a049;
         }
+        .admin-panel {
+            display: none;
+            margin-top: 20px;
+        }
     </style>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app.js"></script>
@@ -58,8 +62,15 @@
     <div class="messages" id="chatbox">
         <p><strong>Cigo Migo:</strong> Pozdrav! Pitaj me bilo šta i ja ću ti dati odgovor.</p>
     </div>
-    <input type="text" id="userInput" placeholder="Type your question here..mljac." />
+    <input type="text" id="userInput" placeholder="Type your question here..." />
     <button onclick="sendMessage()">Send</button>
+
+    <button onclick="showPasswordPrompt()">Admin Login</button>
+    
+    <div class="admin-panel" id="adminPanel">
+        <h3>Admin Panel - Answer Questions</h3>
+        <div id="questions"></div>
+    </div>
 </div>
 
 <script>
@@ -79,6 +90,11 @@
     const database = firebase.database();
 
     const chatbox = document.getElementById("chatbox");
+    const adminPanel = document.getElementById("adminPanel");
+    const questionsDiv = document.getElementById("questions");
+
+    // Admin password (can be customized)
+    const ADMIN_PASSWORD = "kurac123";
 
     // Function to send a message
     function sendMessage() {
@@ -88,12 +104,12 @@
         const messageData = {
             user: "You",
             message: userMessage,
+            type: "user",
             timestamp: new Date().toISOString()
         };
 
         // Save the message to Firebase Realtime Database
         database.ref("messages").push(messageData);
-
         document.getElementById("userInput").value = "";
     }
 
@@ -102,7 +118,66 @@
         const data = snapshot.val();
         chatbox.innerHTML += `<p><strong>${data.user}:</strong> ${data.message}</p>`;
         chatbox.scrollTop = chatbox.scrollHeight;
+
+        if (data.type === "admin") {
+            // If it's an admin response, show the message differently
+            chatbox.innerHTML += `<p><strong>Admin:</strong> ${data.message}</p>`;
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
     });
+
+    // Function to prompt admin login and reveal the admin panel
+    function showPasswordPrompt() {
+        const password = prompt("Please enter admin password:");
+        if (password === ADMIN_PASSWORD) {
+            toggleAdminPanel();
+        } else {
+            alert("Incorrect password!");
+        }
+    }
+
+    // Function to toggle the admin panel visibility
+    function toggleAdminPanel() {
+        adminPanel.style.display = adminPanel.style.display === 'block' ? 'none' : 'block';
+        loadAdminPanel();
+    }
+
+    // Function to load unanswered questions in the admin panel
+    function loadAdminPanel() {
+        questionsDiv.innerHTML = '';
+
+        // Fetch all messages from Firebase
+        database.ref("messages").once("value", function(snapshot) {
+            snapshot.forEach(function(childSnapshot) {
+                const messageData = childSnapshot.val();
+                if (messageData.type === "user") {
+                    const questionEl = document.createElement('div');
+                    questionEl.innerHTML = `
+                        <p><strong>Question:</strong> ${messageData.message}</p>
+                        <textarea id="answer-${childSnapshot.key}" placeholder="Type your answer..."></textarea>
+                        <button onclick="submitAnswer('${childSnapshot.key}')">Submit Answer</button>
+                    `;
+                    questionsDiv.appendChild(questionEl);
+                }
+            });
+        });
+    }
+
+    // Function to submit an answer (admin only)
+    function submitAnswer(questionId) {
+        const answer = document.getElementById(`answer-${questionId}`).value;
+        const answerData = {
+            user: "Admin",
+            message: answer,
+            type: "admin",
+            timestamp: new Date().toISOString()
+        };
+
+        // Save the admin answer to Firebase Realtime Database
+        database.ref("messages").push(answerData);
+        alert('Answer submitted!');
+        loadAdminPanel(); // Reload the admin panel to reflect submitted answers
+    }
 </script>
 
 </body>
