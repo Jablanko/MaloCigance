@@ -59,9 +59,9 @@
         <p><strong>Cigo Migo:</strong> Pozdrav! Pitaj me bilo šta i ja ću ti dati odgovor.</p>
     </div>
     <input type="text" id="userInput" placeholder="Type your question here..." />
-    <button onclick="sendMessage()">Send</button>
+    <button type="button" onclick="sendMessage()">Send</button>
     <br><br>
-    <button onclick="showPasswordPrompt()">Show Admin Panel</button>
+    <button type="button" onclick="showPasswordPrompt()">Show Admin Panel</button>
 
     <div class="admin-panel" id="adminPanel">
         <h3>Admin Panel - Answer Questions</h3>
@@ -158,7 +158,7 @@
                     questionEl.innerHTML = `
                         <p><strong>Question:</strong> ${data.question}</p>
                         <textarea id="answer-${doc.id}" placeholder="Type your answer..."></textarea>
-                        <button onclick="submitAnswer('${doc.id}')">Submit Answer1</button>
+                        <button type="button" onclick="submitAnswer('${doc.id}')">Submit Answer</button>
                     `;
                     adminPanel.appendChild(questionEl);
                 }
